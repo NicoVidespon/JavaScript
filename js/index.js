@@ -11,13 +11,6 @@ class Productos {
         const valorFinal = precioConDescuento * (1 + this.impuesto / 100);
         return Math.round(valorFinal * 100) / 100;
     }
-
-    filtrarPrecio(productos, precioMin = 0, precioMax = Infinity) {
-        return productos.filter(producto => {
-            const valorFinal = producto.calcularValorFinal();
-            return valorFinal >= precioMin && valorFinal <= precioMax;
-        });
-    }
 }
 
 let productosArray = [];
@@ -25,6 +18,11 @@ let productosArray = [];
 function valorFinalProducto() {
     const nombre = document.getElementById("nombre").value;
     const precio = parseFloat(document.getElementById("precio").value);
+
+    if (isNaN(precio) || precio <= 0) {
+        document.getElementById("resultado").innerHTML = "Por favor, ingrese un precio válido.";
+        return;
+    }
 
     let descuento = 0;
     if (document.getElementById("tieneDescuento").value === "si") {
@@ -37,37 +35,48 @@ function valorFinalProducto() {
     }
 
     const producto = new Productos(nombre, precio, descuento, impuesto);
-
     const valorFinal = producto.calcularValorFinal();
+
     document.getElementById("resultado").innerHTML =
         `El valor final del producto <strong>${producto.nombre}</strong> es: $${valorFinal}`;
 
     productosArray.push(producto);
 
+
+    Swal.fire({
+        title: 'Producto agregado',
+        text: `El valor final es $${valorFinal}`,
+        icon: 'success',
+    });
+
     guardarProductosEnLocalStorage();
 }
 
 function guardarProductosEnLocalStorage() {
+    console.log('Guardando productos en localStorage:', productosArray);
     localStorage.setItem("productos", JSON.stringify(productosArray));
 }
 
 function cargarProductosDesdeLocalStorage() {
     const productosGuardados = JSON.parse(localStorage.getItem("productos")) || [];
 
-    productosArray = productosGuardados.map(producto =>
-        new Productos(producto.nombre, producto.precio, producto.descuento, producto.impuesto)
-    );
+    if (productosGuardados.length > 0) {
+        console.log('Productos cargados desde localStorage:', productosGuardados);
+    }
+
+    productosGuardados.forEach(producto => {
+        productosArray.push(new Productos(producto.nombre, producto.precio, producto.descuento, producto.impuesto));
+    });
 }
 
 function mostrarProductosGuardados() {
-    const productosGuardados = JSON.parse(localStorage.getItem("productos")) || [];
-
-    if (productosGuardados.length === 0) {
+    if (productosArray.length === 0) {
         document.getElementById("resultado").innerHTML = "No hay productos guardados.";
     } else {
         let html = "<h2>Productos guardados:</h2><ul>";
-        productosGuardados.forEach((producto, index) => {
-            html += `<li>${index + 1}. ${producto.nombre} - Precio: $${producto.precio}, Descuento: ${producto.descuento}%, Impuesto: ${producto.impuesto}%</li>`;
+        productosArray.forEach((producto, index) => {
+            const valorFinal = producto.calcularValorFinal();
+            html += `<li>${index + 1}. ${producto.nombre} - Precio inicial: $${producto.precio}, Descuento: ${producto.descuento}%, Impuesto: ${producto.impuesto}%, Valor final: $${valorFinal}</li>`;
         });
         html += "</ul>";
         document.getElementById("resultado").innerHTML = html;
@@ -119,12 +128,26 @@ function manejarCamposImpuesto() {
     }
 }
 
+document.getElementById("calcularValor").addEventListener("click", valorFinalProducto);
+document.getElementById("mostrarProductos").addEventListener("click", mostrarProductosGuardados);
+document.getElementById("filtrarProductos").addEventListener("click", filtrarProductosPorPrecio);
+
 document.getElementById("tieneDescuento").addEventListener("change", manejarCamposDescuento);
 document.getElementById("tieneImpuesto").addEventListener("change", manejarCamposImpuesto);
 
-document.getElementById("mostrarProductos").addEventListener("click", function () {
+document.addEventListener("DOMContentLoaded", function () {
     cargarProductosDesdeLocalStorage();
-    mostrarProductosGuardados();
-});
 
-document.getElementById("filtrarProductos").addEventListener("click", filtrarProductosPorPrecio);
+    fetch('../productos/productos.json')
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(producto => {
+                const productoExistente = productosArray.find(p => p.nombre === producto.nombre);
+                if (!productoExistente) {
+                    productosArray.push(new Productos(producto.nombre, producto.precio, producto.descuento, producto.impuesto));
+                }
+            });
+            guardarProductosEnLocalStorage();
+            mostrarProductosGuardados();
+        })
+});

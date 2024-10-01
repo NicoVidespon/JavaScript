@@ -1,0 +1,16 @@
+[
+    {
+        "nombre": "Coca cola",
+        "precio": 3000,
+        "impuesto": 21
+    },
+    {
+        "nombre": "Pantalón",
+        "precio": 40000,
+        "descuento": 10
+    },
+    {
+        "nombre": "Zapatillas",
+        "precio": 70000
+    }
+]
